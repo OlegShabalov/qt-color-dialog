@@ -13,6 +13,8 @@ public:
     ColorDialog(const QColor & initial, QWidget * parent = nullptr);
 
     QColor currentColor() const;
+
+public Q_SLOTS:
     void setCurrentColor(const QColor & color);
 
 Q_SIGNALS:
