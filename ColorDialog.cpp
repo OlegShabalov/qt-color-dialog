@@ -7,29 +7,64 @@
 
 
 
-class Test : public QWidget {
+///////////////////////////////////////////////////////////////////////////////
+
+class ColorPreview : public QWidget {
 public:
-    Test(QWidget * parent)
+    ColorPreview(QWidget * parent)
         : QWidget(parent)
-    {  }
+    {
+        setMinimumSize(102, 102);
+    }
 
-    void set(unsigned char r, unsigned char g, unsigned char b) {
-        _r = r;
-        _g = g;
-        _b = b;
-
-        QPalette pal = QPalette();
-        pal.setColor(QPalette::Window, QColor(r, g, b));
-        setAutoFillBackground(true);
-        setPalette(pal);
-
+    void setColor(const QColor & color) {
+        _color = color;
         update();
     }
 
+    void enableAlpha(bool enable) {
+        _enableAlpha = enable;
+    }
+
+protected:
+    void paintEvent(QPaintEvent * event) override {
+        Q_UNUSED(event)
+
+        QPainter painter(this);
+        painter.setPen(Qt::NoPen);
+
+        if (_enableAlpha) {
+            painter.setBrush(QColor(200, 200, 200));
+
+            bool odd = false;
+            for (int ix = 1; ix < width(); ix += 6) {
+                int iy = (odd ? 6 : 0);
+                odd = !odd;
+                for (; iy < height(); iy += 12) {
+                    painter.drawRect(ix, iy, 6, 6);
+                }
+            }
+
+            QColor noAlpha = _color;
+            noAlpha.setAlphaF(1.0);
+            painter.setBrush(QBrush(noAlpha));
+            painter.drawRect(0, 0, width(), height() / 2.0f);
+
+            painter.setBrush(QBrush(_color));
+            painter.drawRect(0, height() / 2.0f, width(), height() / 2.0f);
+        }
+        else {
+            QColor noAlpha = _color;
+            noAlpha.setAlphaF(1.0);
+            painter.setBrush(QBrush(noAlpha));
+            painter.drawRect(0, 0, width(), height());
+        }
+
+    }
+
 private:
-    unsigned char _r;
-    unsigned char _g;
-    unsigned char _b;
+    QColor _color;
+    bool _enableAlpha = true;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,6 +87,10 @@ public:
 
     void setAlpha(float alpha) {
         _alpha = alpha;
+    }
+
+    QColor color() const {
+        return QColor(_r, _g, _b, _alpha * 255);
     }
 
 protected:
@@ -123,8 +162,13 @@ public:
         _internal->setAlpha(_alpha);
     }
 
+    void setColorPreview(ColorPreview * colorPreview) {
+        _colorPreview = colorPreview;
+    }
+
     void setItputColor(const QColor & color) {
         _internal->setColor(color.red(), color.green(), color.blue());
+        _colorPreview->setColor(_internal->color());
         update();
     }
 
@@ -155,6 +199,7 @@ protected:
             _alpha = event->pos().y() / static_cast<float>(height());
             _alpha = qBound(0.0f, _alpha, 1.0f);
             _internal->setAlpha(_alpha);
+            _colorPreview->setColor(_internal->color());
             update();
             event->accept();
             return;
@@ -166,6 +211,7 @@ protected:
         _alpha = event->pos().y() / static_cast<float>(height());
         _alpha = qBound(0.0f, _alpha, 1.0f);
         _internal->setAlpha(_alpha);
+        _colorPreview->setColor(_internal->color());
         update();
         event->accept();
     }
@@ -173,15 +219,15 @@ protected:
 private:
     float _alpha;
     AlphaSelectorInternal * _internal;
+    ColorPreview * _colorPreview;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 
 class ColorSelector : public QWidget {
 public:
-    ColorSelector(QWidget * parent, Test * t)
+    ColorSelector(QWidget * parent)
         : QWidget(parent)
-        , t(t)
     {  }
 
     void setAlphaSelector(AlphaSelector * alphaSelector) {
@@ -210,7 +256,7 @@ protected:
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
 
-        const int lineSize = 4;
+        const int lineSize = 1;
 
         for (int h = 0; h < height(); h += lineSize) {
             const float k = 1 - (h / static_cast<float>(height()));
@@ -269,8 +315,6 @@ private:
     void _updateColor() {
         _outputColor = QColor::fromHsvF(_hue, _pointX, 1 - _pointY).toRgb();
         _alphaSelector->setItputColor(_outputColor);
-
-        t->set(_outputColor.red(), _outputColor.green(), _outputColor.blue());
     }
 
 private:
@@ -281,8 +325,6 @@ private:
     QColor _outputColor;
 
     AlphaSelector * _alphaSelector;
-
-    Test * t;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -368,10 +410,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
 {
     QHBoxLayout * l = new QHBoxLayout(this);
 
-    Test * t = new Test(this);
-    t->setMinimumSize(100, 100);
-
-    ColorSelector * colorSelector = new ColorSelector(this, t);
+    ColorSelector * colorSelector = new ColorSelector(this);
     l->addWidget(colorSelector, 1);
 
     HueSelector * hueSelector = new HueSelector(this);
@@ -382,7 +421,9 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     colorSelector->setAlphaSelector(alphaSelector);
     l->addWidget(alphaSelector);
 
-    l->addWidget(t, 0, Qt::AlignTop);
+    ColorPreview * colorPreview = new ColorPreview(this);
+    alphaSelector->setColorPreview(colorPreview);
+    l->addWidget(colorPreview, 0, Qt::AlignTop);
 
     const QColor color(255, 255, 32); // yellow
     //const QColor color(0, 0, 0); // black
@@ -394,7 +435,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     hueSelector->setOutputColor(color.red(), color.green(), color.blue());
     colorSelector->setOutputColor(color.red(), color.green(), color.blue());
     alphaSelector->setOutputColor(color);
-    t->set(color.red(), color.green(), color.blue());
+    colorPreview->setColor(color);
 }
 
 QColor ColorDialog::currentColor() const {
