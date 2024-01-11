@@ -5,12 +5,18 @@
 
 
 
+class ColorDialogPrivate;
+
+
+
 class ColorDialog : public QDialog {
     Q_OBJECT
 
 public:
     ColorDialog(QWidget * parent = nullptr);
     ColorDialog(const QColor & initial, QWidget * parent = nullptr);
+
+    ~ColorDialog() override;
 
     QColor currentColor() const;
 
@@ -21,7 +27,7 @@ Q_SIGNALS:
     void currentColorChanged(const QColor & color);
 
 private:
-    QColor _currentColor;
+    ColorDialogPrivate * _d;
 };
 
 

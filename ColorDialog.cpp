@@ -2,8 +2,16 @@
 
 #include <QPainter>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
+
+#include <QFormLayout>
+
 #include <QMouseEvent>
 #include <QBitmap>
+#include <QSpinBox>
+#include <QPushButton>
+
+#include <QLabel>
 
 
 
@@ -14,7 +22,7 @@ public:
     ColorPreview(QWidget * parent)
         : QWidget(parent)
     {
-        setMinimumSize(102, 102);
+        setMinimumSize(96, 96);
     }
 
     void setColor(const QColor & color) {
@@ -23,7 +31,10 @@ public:
     }
 
     void enableAlpha(bool enable) {
-        _enableAlpha = enable;
+        if (_enableAlpha != enable) {
+            _enableAlpha = enable;
+            update();
+        }
     }
 
 protected:
@@ -400,48 +411,119 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
+class ColorDialogPrivate {
+    friend class ColorDialog;
+
+    QColor currentColor;
+
+    ColorSelector * colorSelector;
+    HueSelector * hueSelector;
+    AlphaSelector * alphaSelector;
+    ColorPreview * colorPreview;
+
+    QSpinBox * alphaSpinBox;
+    QSpinBox * redSpinBox;
+    QSpinBox * greenSpinBox;
+    QSpinBox * blueSpinBox;
+
+    QPushButton * okButton;
+    QPushButton * cancelButton;
+
+    void setColor(const QColor & c) {
+        currentColor = c;
+        hueSelector->setOutputColor(c.red(), c.green(), c.blue());
+        colorSelector->setOutputColor(c.red(), c.green(), c.blue());
+        alphaSelector->setOutputColor(c);
+        colorPreview->setColor(c);
+    }
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
 ColorDialog::ColorDialog(QWidget * parent)
     : ColorDialog(Qt::white, parent)
 {  }
 
 ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     : QDialog(parent)
-    , _currentColor(initial)
 {
-    QHBoxLayout * l = new QHBoxLayout(this);
+    setFocusPolicy(Qt::StrongFocus);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
 
-    ColorSelector * colorSelector = new ColorSelector(this);
-    l->addWidget(colorSelector, 1);
+    _d = new ColorDialogPrivate;
 
-    HueSelector * hueSelector = new HueSelector(this);
-    hueSelector->setColorSelector(colorSelector);
-    l->addWidget(hueSelector);
+    QHBoxLayout * layout = new QHBoxLayout(this);
 
-    AlphaSelector * alphaSelector = new AlphaSelector(this);
-    colorSelector->setAlphaSelector(alphaSelector);
-    l->addWidget(alphaSelector);
+    _d->colorSelector = new ColorSelector(this);
+    layout->addWidget(_d->colorSelector, 1);
 
-    ColorPreview * colorPreview = new ColorPreview(this);
-    alphaSelector->setColorPreview(colorPreview);
-    l->addWidget(colorPreview, 0, Qt::AlignTop);
+    _d->hueSelector = new HueSelector(this);
+    _d->hueSelector->setColorSelector(_d->colorSelector);
+    layout->addWidget(_d->hueSelector);
 
-    const QColor color(255, 255, 32); // yellow
-    //const QColor color(0, 0, 0); // black
-    //const QColor color(255, 255, 255); // white
-    //const QColor color(255, 0, 0); // red
-    //const QColor color(200, 200, 200); // light white
-    //const QColor color(150, 25, 100, 100);
+    _d->alphaSelector = new AlphaSelector(this);
+    _d->colorSelector->setAlphaSelector(_d->alphaSelector);
+    layout->addWidget(_d->alphaSelector);
 
-    hueSelector->setOutputColor(color.red(), color.green(), color.blue());
-    colorSelector->setOutputColor(color.red(), color.green(), color.blue());
-    alphaSelector->setOutputColor(color);
-    colorPreview->setColor(color);
+    QVBoxLayout * rLayout = new QVBoxLayout;
+    layout->addLayout(rLayout);
+
+    _d->colorPreview = new ColorPreview(this);
+    _d->alphaSelector->setColorPreview(_d->colorPreview);
+    rLayout->addWidget(_d->colorPreview, 0);
+
+    QGridLayout * rgbaLayout = new QGridLayout;
+    rLayout->addLayout(rgbaLayout, 0);
+
+    rgbaLayout->addWidget(new QLabel(tr("R:"), this), 0, 0, Qt::AlignRight);
+    _d->redSpinBox = new QSpinBox(this);
+    _d->redSpinBox->setRange(0, 255);
+    rgbaLayout->addWidget(_d->redSpinBox, 0, 1);
+
+    rgbaLayout->addWidget(new QLabel(tr("G:"), this), 1, 0, Qt::AlignRight);
+    _d->greenSpinBox = new QSpinBox(this);
+    _d->greenSpinBox->setRange(0, 255);
+    rgbaLayout->addWidget(_d->greenSpinBox, 1, 1);
+
+    rgbaLayout->addWidget(new QLabel(tr("B:"), this), 2, 0, Qt::AlignRight);
+    _d->blueSpinBox = new QSpinBox(this);
+    _d->blueSpinBox->setRange(0, 255);
+    rgbaLayout->addWidget(_d->blueSpinBox, 2, 1);
+
+    rgbaLayout->addWidget(new QLabel(tr("A:"), this), 3, 0, Qt::AlignRight);
+    _d->alphaSpinBox = new QSpinBox(this);
+    _d->alphaSpinBox->setRange(0, 255);
+    rgbaLayout->addWidget(_d->alphaSpinBox, 3, 1);
+
+    rLayout->addStretch();
+
+    _d->okButton = new QPushButton(tr("OK"), this);
+    _d->cancelButton = new QPushButton(tr("Cancel"), this);
+
+    rLayout->addWidget(_d->cancelButton);
+    rLayout->addWidget(_d->okButton);
+
+
+
+    const QColor c(255, 255, 32); // yellow
+    //const QColor c(0, 0, 0); // black
+    //const QColor c(255, 255, 255); // white
+    //const QColor c(255, 0, 0); // red
+    //const QColor c(200, 200, 200); // light white
+    //const QColor c(150, 25, 100, 100);
+
+    _d->setColor(initial);
+    _d->setColor(c);
+}
+
+ColorDialog::~ColorDialog() {
+    delete _d;
 }
 
 QColor ColorDialog::currentColor() const {
-    return _currentColor;
+    return _d->currentColor;
 }
 
 void ColorDialog::setCurrentColor(const QColor & color) {
-    _currentColor = color;
+    _d->currentColor = color;
 }
