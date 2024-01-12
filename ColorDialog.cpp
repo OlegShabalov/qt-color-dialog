@@ -3,17 +3,51 @@
 #include <QPainter>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-
-#include <QFormLayout>
-
 #include <QMouseEvent>
 #include <QBitmap>
+#include <QGridLayout>
 #include <QSpinBox>
 #include <QPushButton>
-
 #include <QLabel>
 
 
+
+///////////////////////////////////////////////////////////////////////////////
+
+class ColorSelector;
+class HueSelector;
+class AlphaSelector;
+class ColorPreview;
+
+///////////////////////////////////////////////////////////////////////////////
+
+class ColorDialogPrivate {
+    friend class ColorDialog;
+
+    QColor currentColor;
+    ColorDialog * colorDialog;
+
+    ColorSelector * colorSelector;
+    HueSelector * hueSelector;
+    AlphaSelector * alphaSelector;
+    ColorPreview * colorPreview;
+
+    QSpinBox * redSpinBox;
+    QSpinBox * greenSpinBox;
+    QSpinBox * blueSpinBox;
+    QSpinBox * alphaSpinBox;
+
+    QPushButton * okButton;
+    QPushButton * cancelButton;
+
+    bool ignoreSpinBoxesSignals = false;
+
+    void setColorFromSpinBoxes();
+    void setInputColor(const QColor & c);
+
+public:
+    void setOutputColor(const QColor & c);
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -25,7 +59,17 @@ public:
         setMinimumSize(96, 96);
     }
 
-    void setColor(const QColor & color) {
+    void setPrivateData(ColorDialogPrivate * privateData) {
+        _privateData = privateData;
+    }
+
+    void setInputColor(const QColor & color) {
+        _color = color;
+        _privateData->setOutputColor(color);
+        update();
+    }
+
+    void setOutputColor(const QColor & color) {
         _color = color;
         update();
     }
@@ -76,6 +120,7 @@ protected:
 private:
     QColor _color;
     bool _enableAlpha = true;
+    ColorDialogPrivate * _privateData;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -179,7 +224,7 @@ public:
 
     void setItputColor(const QColor & color) {
         _internal->setColor(color.red(), color.green(), color.blue());
-        _colorPreview->setColor(_internal->color());
+        _colorPreview->setInputColor(_internal->color());
         update();
     }
 
@@ -210,7 +255,7 @@ protected:
             _alpha = event->pos().y() / static_cast<float>(height());
             _alpha = qBound(0.0f, _alpha, 1.0f);
             _internal->setAlpha(_alpha);
-            _colorPreview->setColor(_internal->color());
+            _colorPreview->setInputColor(_internal->color());
             update();
             event->accept();
             return;
@@ -222,7 +267,7 @@ protected:
         _alpha = event->pos().y() / static_cast<float>(height());
         _alpha = qBound(0.0f, _alpha, 1.0f);
         _internal->setAlpha(_alpha);
-        _colorPreview->setColor(_internal->color());
+        _colorPreview->setInputColor(_internal->color());
         update();
         event->accept();
     }
@@ -251,9 +296,9 @@ public:
         update();
     }
 
-    void setOutputColor(unsigned char r, unsigned char g, unsigned char b) {
-        _outputColor = QColor(r, g, b);
-        const QColor temp = _outputColor.toHsv();
+    void setOutputColor(const QColor & color) {
+        _outputColor = color;
+        const QColor temp = color.toHsv();
         _hue = qMax(temp.hsvHueF(), 0.0);
         _pointX = temp.saturationF();
         _pointY = 1 - temp.valueF();
@@ -352,8 +397,8 @@ public:
         _colorSelector = colorSelector;
     }
 
-    void setOutputColor(unsigned char r, unsigned char g, unsigned char b) {
-        _hue = qMax(QColor(r, g, b).toHsv().hsvHueF(), 0.0);
+    void setOutputColor(const QColor & color) {
+        _hue = qMax(color.toHsv().hsvHueF(), 0.0);
         update();
     }
 
@@ -411,32 +456,52 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class ColorDialogPrivate {
-    friend class ColorDialog;
+void ColorDialogPrivate::setColorFromSpinBoxes() {
+    if (ignoreSpinBoxesSignals) return;
 
-    QColor currentColor;
+    currentColor = QColor(redSpinBox->value(),
+                          greenSpinBox->value(),
+                          blueSpinBox->value(),
+                          alphaSpinBox->value());
 
-    ColorSelector * colorSelector;
-    HueSelector * hueSelector;
-    AlphaSelector * alphaSelector;
-    ColorPreview * colorPreview;
+    hueSelector->setOutputColor(currentColor);
+    colorSelector->setOutputColor(currentColor);
+    alphaSelector->setOutputColor(currentColor);
+    colorPreview->setOutputColor(currentColor);
 
-    QSpinBox * alphaSpinBox;
-    QSpinBox * redSpinBox;
-    QSpinBox * greenSpinBox;
-    QSpinBox * blueSpinBox;
+    Q_EMIT colorDialog->currentColorChanged(currentColor);
+}
 
-    QPushButton * okButton;
-    QPushButton * cancelButton;
+void ColorDialogPrivate::setInputColor(const QColor & c) {
+    currentColor = c;
 
-    void setColor(const QColor & c) {
-        currentColor = c;
-        hueSelector->setOutputColor(c.red(), c.green(), c.blue());
-        colorSelector->setOutputColor(c.red(), c.green(), c.blue());
-        alphaSelector->setOutputColor(c);
-        colorPreview->setColor(c);
-    }
-};
+    hueSelector->setOutputColor(c);
+    colorSelector->setOutputColor(c);
+    alphaSelector->setOutputColor(c);
+    colorPreview->setOutputColor(c);
+
+    ignoreSpinBoxesSignals = true;
+    redSpinBox->setValue(c.red());
+    greenSpinBox->setValue(c.green());
+    blueSpinBox->setValue(c.blue());
+    alphaSpinBox->setValue(c.alpha());
+    ignoreSpinBoxesSignals = false;
+
+    Q_EMIT colorDialog->currentColorChanged(currentColor);
+}
+
+void ColorDialogPrivate::setOutputColor(const QColor & c) {
+    currentColor = c;
+
+    ignoreSpinBoxesSignals = true;
+    redSpinBox->setValue(c.red());
+    greenSpinBox->setValue(c.green());
+    blueSpinBox->setValue(c.blue());
+    alphaSpinBox->setValue(c.alpha());
+    ignoreSpinBoxesSignals = false;
+
+    Q_EMIT colorDialog->currentColorChanged(currentColor);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -451,6 +516,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
 
     _d = new ColorDialogPrivate;
+    _d->colorDialog = this;
 
     QHBoxLayout * layout = new QHBoxLayout(this);
 
@@ -469,30 +535,39 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     layout->addLayout(rLayout);
 
     _d->colorPreview = new ColorPreview(this);
+    _d->colorPreview->setPrivateData(_d);
     _d->alphaSelector->setColorPreview(_d->colorPreview);
     rLayout->addWidget(_d->colorPreview, 0);
 
     QGridLayout * rgbaLayout = new QGridLayout;
     rLayout->addLayout(rgbaLayout, 0);
 
+    auto fun = [=](){
+        _d->setColorFromSpinBoxes();
+    };
+
     rgbaLayout->addWidget(new QLabel(tr("R:"), this), 0, 0, Qt::AlignRight);
     _d->redSpinBox = new QSpinBox(this);
     _d->redSpinBox->setRange(0, 255);
+    connect(_d->redSpinBox, &QSpinBox::textChanged, this, fun);
     rgbaLayout->addWidget(_d->redSpinBox, 0, 1);
 
     rgbaLayout->addWidget(new QLabel(tr("G:"), this), 1, 0, Qt::AlignRight);
     _d->greenSpinBox = new QSpinBox(this);
     _d->greenSpinBox->setRange(0, 255);
+    connect(_d->greenSpinBox, &QSpinBox::textChanged, this, fun);
     rgbaLayout->addWidget(_d->greenSpinBox, 1, 1);
 
     rgbaLayout->addWidget(new QLabel(tr("B:"), this), 2, 0, Qt::AlignRight);
     _d->blueSpinBox = new QSpinBox(this);
     _d->blueSpinBox->setRange(0, 255);
+    connect(_d->blueSpinBox, &QSpinBox::textChanged, this, fun);
     rgbaLayout->addWidget(_d->blueSpinBox, 2, 1);
 
     rgbaLayout->addWidget(new QLabel(tr("A:"), this), 3, 0, Qt::AlignRight);
     _d->alphaSpinBox = new QSpinBox(this);
     _d->alphaSpinBox->setRange(0, 255);
+    connect(_d->alphaSpinBox, &QSpinBox::textChanged, this, fun);
     rgbaLayout->addWidget(_d->alphaSpinBox, 3, 1);
 
     rLayout->addStretch();
@@ -503,17 +578,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     rLayout->addWidget(_d->cancelButton);
     rLayout->addWidget(_d->okButton);
 
-
-
-    const QColor c(255, 255, 32); // yellow
-    //const QColor c(0, 0, 0); // black
-    //const QColor c(255, 255, 255); // white
-    //const QColor c(255, 0, 0); // red
-    //const QColor c(200, 200, 200); // light white
-    //const QColor c(150, 25, 100, 100);
-
-    _d->setColor(initial);
-    _d->setColor(c);
+    setCurrentColor(initial);
 }
 
 ColorDialog::~ColorDialog() {
@@ -525,5 +590,5 @@ QColor ColorDialog::currentColor() const {
 }
 
 void ColorDialog::setCurrentColor(const QColor & color) {
-    _d->currentColor = color;
+    _d->setInputColor(color);
 }
