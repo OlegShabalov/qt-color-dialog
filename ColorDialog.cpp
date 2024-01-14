@@ -32,6 +32,8 @@ class ColorDialogPrivate {
     AlphaSelector * alphaSelector;
     ColorPreview * colorPreview;
 
+    QWidget * columnWidget;
+
     QSpinBox * redSpinBox;
     QSpinBox * greenSpinBox;
     QSpinBox * blueSpinBox;
@@ -47,6 +49,8 @@ class ColorDialogPrivate {
 
 public:
     void setOutputColor(const QColor & c);
+
+    void updateColorSelectorMinSize();
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -503,6 +507,11 @@ void ColorDialogPrivate::setOutputColor(const QColor & c) {
     Q_EMIT colorDialog->currentColorChanged(currentColor);
 }
 
+void ColorDialogPrivate::updateColorSelectorMinSize() {
+    const int mh = columnWidget->minimumSizeHint().height();
+    colorSelector->setMinimumSize(mh, mh);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 ColorDialog::ColorDialog(QWidget * parent)
@@ -531,8 +540,11 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     _d->colorSelector->setAlphaSelector(_d->alphaSelector);
     layout->addWidget(_d->alphaSelector);
 
-    QVBoxLayout * rLayout = new QVBoxLayout;
-    layout->addLayout(rLayout);
+    _d->columnWidget = new QWidget(this);
+    layout->addWidget(_d->columnWidget);
+
+    QVBoxLayout * rLayout = new QVBoxLayout(_d->columnWidget);
+    rLayout->setMargin(0);
 
     _d->colorPreview = new ColorPreview(this);
     _d->colorPreview->setPrivateData(_d);
@@ -577,6 +589,8 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
 
     rLayout->addWidget(_d->cancelButton);
     rLayout->addWidget(_d->okButton);
+
+    _d->updateColorSelectorMinSize();
 
     setCurrentColor(initial);
 }
