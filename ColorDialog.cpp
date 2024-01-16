@@ -34,15 +34,20 @@ class ColorDialogPrivate {
 
     QWidget * columnWidget;
 
+    QGridLayout * spinBoxesLayout;
+
     QSpinBox * redSpinBox;
     QSpinBox * greenSpinBox;
     QSpinBox * blueSpinBox;
     QSpinBox * alphaSpinBox;
 
+    QLabel * alphaLabel;
+
     QPushButton * okButton;
     QPushButton * cancelButton;
 
     bool ignoreSpinBoxesSignals = false;
+    bool enabledAlpha = true;
 
     void setColorFromSpinBoxes();
     void setInputColor(const QColor & c);
@@ -79,8 +84,8 @@ public:
     }
 
     void enableAlpha(bool enable) {
-        if (_enableAlpha != enable) {
-            _enableAlpha = enable;
+        if (_enabledAlpha != enable) {
+            _enabledAlpha = enable;
             update();
         }
     }
@@ -92,7 +97,7 @@ protected:
         QPainter painter(this);
         painter.setPen(Qt::NoPen);
 
-        if (_enableAlpha) {
+        if (_enabledAlpha) {
             painter.setBrush(QColor(200, 200, 200));
 
             bool odd = false;
@@ -123,7 +128,7 @@ protected:
 
 private:
     QColor _color;
-    bool _enableAlpha = true;
+    bool _enabledAlpha = true;
     ColorDialogPrivate * _privateData;
 };
 
@@ -473,11 +478,15 @@ void ColorDialogPrivate::setColorFromSpinBoxes() {
     alphaSelector->setOutputColor(currentColor);
     colorPreview->setOutputColor(currentColor);
 
+    if (!enabledAlpha) {
+        currentColor.setAlpha(255);
+    }
+
     Q_EMIT colorDialog->currentColorChanged(currentColor);
 }
 
 void ColorDialogPrivate::setInputColor(const QColor & c) {
-    currentColor = c;
+    // from outside
 
     hueSelector->setOutputColor(c);
     colorSelector->setOutputColor(c);
@@ -491,11 +500,16 @@ void ColorDialogPrivate::setInputColor(const QColor & c) {
     alphaSpinBox->setValue(c.alpha());
     ignoreSpinBoxesSignals = false;
 
+    currentColor = c;
+    if (!enabledAlpha) {
+        currentColor.setAlpha(255);
+    }
+
     Q_EMIT colorDialog->currentColorChanged(currentColor);
 }
 
 void ColorDialogPrivate::setOutputColor(const QColor & c) {
-    currentColor = c;
+    // from color preview
 
     ignoreSpinBoxesSignals = true;
     redSpinBox->setValue(c.red());
@@ -503,6 +517,11 @@ void ColorDialogPrivate::setOutputColor(const QColor & c) {
     blueSpinBox->setValue(c.blue());
     alphaSpinBox->setValue(c.alpha());
     ignoreSpinBoxesSignals = false;
+
+    currentColor = c;
+    if (!enabledAlpha) {
+        currentColor.setAlpha(255);
+    }
 
     Q_EMIT colorDialog->currentColorChanged(currentColor);
 }
@@ -551,36 +570,42 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     _d->alphaSelector->setColorPreview(_d->colorPreview);
     rLayout->addWidget(_d->colorPreview, 0);
 
-    QGridLayout * rgbaLayout = new QGridLayout;
-    rLayout->addLayout(rgbaLayout, 0);
+    _d->spinBoxesLayout = new QGridLayout;
+    rLayout->addLayout(_d->spinBoxesLayout, 0);
 
     auto fun = [=](){
         _d->setColorFromSpinBoxes();
     };
 
-    rgbaLayout->addWidget(new QLabel(tr("R:"), this), 0, 0, Qt::AlignRight);
+    QLabel * label;
+
+    label = new QLabel(tr("R:"), this);
+    _d->spinBoxesLayout->addWidget(label, 0, 0, Qt::AlignRight);
     _d->redSpinBox = new QSpinBox(this);
     _d->redSpinBox->setRange(0, 255);
     connect(_d->redSpinBox, &QSpinBox::textChanged, this, fun);
-    rgbaLayout->addWidget(_d->redSpinBox, 0, 1);
+    _d->spinBoxesLayout->addWidget(_d->redSpinBox, 0, 1);
 
-    rgbaLayout->addWidget(new QLabel(tr("G:"), this), 1, 0, Qt::AlignRight);
+    label = new QLabel(tr("G:"), this);
+    _d->spinBoxesLayout->addWidget(label, 1, 0, Qt::AlignRight);
     _d->greenSpinBox = new QSpinBox(this);
     _d->greenSpinBox->setRange(0, 255);
     connect(_d->greenSpinBox, &QSpinBox::textChanged, this, fun);
-    rgbaLayout->addWidget(_d->greenSpinBox, 1, 1);
+    _d->spinBoxesLayout->addWidget(_d->greenSpinBox, 1, 1);
 
-    rgbaLayout->addWidget(new QLabel(tr("B:"), this), 2, 0, Qt::AlignRight);
+    label = new QLabel(tr("B:"), this);
+    _d->spinBoxesLayout->addWidget(label, 2, 0, Qt::AlignRight);
     _d->blueSpinBox = new QSpinBox(this);
     _d->blueSpinBox->setRange(0, 255);
     connect(_d->blueSpinBox, &QSpinBox::textChanged, this, fun);
-    rgbaLayout->addWidget(_d->blueSpinBox, 2, 1);
+    _d->spinBoxesLayout->addWidget(_d->blueSpinBox, 2, 1);
 
-    rgbaLayout->addWidget(new QLabel(tr("A:"), this), 3, 0, Qt::AlignRight);
+    _d->alphaLabel = new QLabel(tr("A:"), this);
+    _d->spinBoxesLayout->addWidget(_d->alphaLabel, 3, 0, Qt::AlignRight);
     _d->alphaSpinBox = new QSpinBox(this);
     _d->alphaSpinBox->setRange(0, 255);
     connect(_d->alphaSpinBox, &QSpinBox::textChanged, this, fun);
-    rgbaLayout->addWidget(_d->alphaSpinBox, 3, 1);
+    _d->spinBoxesLayout->addWidget(_d->alphaSpinBox, 3, 1);
 
     rLayout->addStretch();
 
@@ -605,4 +630,36 @@ QColor ColorDialog::currentColor() const {
 
 void ColorDialog::setCurrentColor(const QColor & color) {
     _d->setInputColor(color);
+}
+
+void ColorDialog::enableAlphaChannel(bool enable) {
+    if (_d->enabledAlpha == enable) return;
+    _d->enabledAlpha = enable;
+
+    if (enable) {
+        _d->colorPreview->enableAlpha(true);
+
+        _d->spinBoxesLayout->addWidget(_d->alphaLabel, 3, 0, Qt::AlignRight);
+        _d->spinBoxesLayout->addWidget(_d->alphaSpinBox, 3, 1);
+
+        _d->alphaSelector->show();
+        _d->alphaSpinBox->show();
+        _d->alphaLabel->show();
+
+        _d->updateColorSelectorMinSize();
+        _d->setColorFromSpinBoxes();
+    }
+    else {
+        _d->colorPreview->enableAlpha(false);
+
+        _d->spinBoxesLayout->removeWidget(_d->alphaSpinBox);
+        _d->spinBoxesLayout->removeWidget(_d->alphaLabel);
+
+        _d->alphaSelector->hide();
+        _d->alphaSpinBox->hide();
+        _d->alphaLabel->hide();
+
+        _d->updateColorSelectorMinSize();
+        _d->setColorFromSpinBoxes();
+    }
 }
