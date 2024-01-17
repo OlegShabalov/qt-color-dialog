@@ -542,6 +542,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
 {
     setFocusPolicy(Qt::StrongFocus);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
+    setFocus();
 
     _d = new ColorDialogPrivate;
     _d->colorDialog = this;
@@ -609,8 +610,11 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
 
     rLayout->addStretch();
 
-    _d->okButton = new QPushButton(tr("OK"), this);
     _d->cancelButton = new QPushButton(tr("Cancel"), this);
+    connect(_d->cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    _d->okButton = new QPushButton(tr("OK"), this);
+    _d->okButton->setDefault(true);
+    connect(_d->okButton, &QPushButton::clicked, this, &QDialog::accept);
 
     rLayout->addWidget(_d->cancelButton);
     rLayout->addWidget(_d->okButton);
