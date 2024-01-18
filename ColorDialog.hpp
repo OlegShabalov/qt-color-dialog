@@ -22,7 +22,8 @@ public:
 
 public Q_SLOTS:
     void setCurrentColor(const QColor & color);
-    void enableAlphaChannel(bool enable);
+    void setEnabledAlphaChannel(bool enabled);
+    void setEnabledNoButtons(bool enabled);
 
 Q_SIGNALS:
     void currentColorChanged(const QColor & color);

@@ -636,11 +636,11 @@ void ColorDialog::setCurrentColor(const QColor & color) {
     _d->setInputColor(color);
 }
 
-void ColorDialog::enableAlphaChannel(bool enable) {
-    if (_d->enabledAlpha == enable) return;
-    _d->enabledAlpha = enable;
+void ColorDialog::setEnabledAlphaChannel(bool enabled) {
+    if (_d->enabledAlpha == enabled) return;
+    _d->enabledAlpha = enabled;
 
-    if (enable) {
+    if (enabled) {
         _d->colorPreview->enableAlpha(true);
 
         _d->spinBoxesLayout->addWidget(_d->alphaLabel, 3, 0, Qt::AlignRight);
@@ -665,5 +665,20 @@ void ColorDialog::enableAlphaChannel(bool enable) {
 
         _d->updateColorSelectorMinSize();
         _d->setColorFromSpinBoxes();
+    }
+}
+
+void ColorDialog::setEnabledNoButtons(bool enabled) {
+    if (enabled) {
+        _d->okButton->hide();
+        _d->cancelButton->hide();
+
+        _d->updateColorSelectorMinSize();
+    }
+    else {
+        _d->okButton->show();
+        _d->cancelButton->show();
+
+        _d->updateColorSelectorMinSize();
     }
 }
