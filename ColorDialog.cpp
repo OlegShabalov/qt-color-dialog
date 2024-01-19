@@ -682,3 +682,29 @@ void ColorDialog::setEnabledNoButtons(bool enabled) {
         _d->updateColorSelectorMinSize();
     }
 }
+
+QColor ColorDialog::getColor(
+    const QColor & initial,
+    QWidget * parent,
+    const QString & title,
+    bool enableAlphaChannel,
+    bool enableNoButtonsMode)
+{
+    ColorDialog colorDialog(initial, parent);
+
+    if (!title.isEmpty()) {
+        colorDialog.setWindowTitle(title);
+    }
+
+    colorDialog.setEnabledAlphaChannel(enableAlphaChannel);
+    colorDialog.setEnabledNoButtons(enableNoButtonsMode);
+
+    int res = colorDialog.exec();
+
+    if (res == QDialog::Accepted) {
+        return colorDialog.currentColor();
+    }
+    else {
+        return initial;
+    }
+}

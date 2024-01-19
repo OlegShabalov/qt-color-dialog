@@ -28,6 +28,15 @@ public Q_SLOTS:
 Q_SIGNALS:
     void currentColorChanged(const QColor & color);
 
+public:
+    static QColor getColor(
+        const QColor & initial = Qt::white,
+        QWidget * parent = nullptr,
+        const QString & title = QString(),
+        bool enableAlphaChannel = true,
+        bool enableNoButtonsMode = false
+    );
+
 private:
     ColorDialogPrivate * _d;
 };
