@@ -104,16 +104,19 @@ protected:
         painter.setPen(Qt::NoPen);
 
         if (_enabledAlpha) {
+            painter.setRenderHint(QPainter::Antialiasing);
             painter.setBrush(QColor(200, 200, 200));
 
             bool odd = false;
-            for (int ix = 1; ix < width(); ix += 6) {
+            for (int ix = 0; ix < width(); ix += 6) {
                 int iy = (odd ? 6 : 0);
                 odd = !odd;
                 for (; iy < height(); iy += 12) {
                     painter.drawRect(ix, iy, 6, 6);
                 }
             }
+
+            painter.setRenderHint(QPainter::Antialiasing, false);
 
             QColor noAlpha = _color;
             noAlpha.setAlphaF(1.0);
@@ -169,7 +172,7 @@ protected:
         Q_UNUSED(event)
 
         QPainter painter(this);
-
+        painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(200, 200, 200));
 
@@ -177,6 +180,8 @@ protected:
             painter.drawRect(0 + 6, h, 6, 6);
             painter.drawRect(0 + 6 + 6, h + 6, 6, 6);
         }
+
+        painter.setRenderHint(QPainter::Antialiasing, false);
 
         QLinearGradient gradient(QPointF(0, 0), QPointF(0, height()));
         gradient.setColorAt(0, QColor(_r, _g, _b, 0));
@@ -325,7 +330,6 @@ protected:
         Q_UNUSED(event)
 
         QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing);
 
         const int lineSize = 1;
 
@@ -341,6 +345,7 @@ protected:
             painter.drawRect(0, h, width(), lineSize);
         }
 
+        painter.setRenderHint(QPainter::Antialiasing);
         painter.setBrush(Qt::NoBrush);
 
         const int x = width()  * _pointX - 10;
@@ -422,7 +427,6 @@ protected:
         Q_UNUSED(event)
 
         QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing);
 
         const int lineSize = 1;
 
@@ -439,6 +443,7 @@ protected:
         const int x = width()  * 0.5f          - 10;
         const int y = height() * (1.0f - _hue) - 10;
 
+        painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(QPen(QColor(70, 70, 70), 2));
         painter.setBrush(QBrush(QColor::fromHsvF(_hue, 1, 1)));
         painter.drawEllipse(x, y, 20, 20);
