@@ -225,7 +225,7 @@ public:
         _alpha = 0.5;
 
         QVBoxLayout * layout = new QVBoxLayout(this);
-        layout->setMargin(0);
+        layout->setContentsMargins(0, 0, 0, 0);
         layout->setSpacing(0);
 
         _internal = new AlphaSelectorInternal(this);
@@ -572,7 +572,7 @@ ColorDialog::ColorDialog(const QColor & initial, QWidget * parent)
     layout->addWidget(_d->columnWidget);
 
     QVBoxLayout * rLayout = new QVBoxLayout(_d->columnWidget);
-    rLayout->setMargin(0);
+    rLayout->setContentsMargins(0, 0, 0, 0);
 
     _d->colorPreview = new ColorPreview(this);
     _d->colorPreview->setPrivateData(_d);
